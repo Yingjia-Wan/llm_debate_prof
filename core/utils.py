@@ -37,11 +37,13 @@ def setup_environment(
     anthropic_tag: str = "ANTHROPIC_API_KEY",
     logger_level: str = "info",
     openai_tag: str = "API_KEY",
+    openai_url: str = "BASE_URL",
     organization: str = None,
 ):
     setup_logging(logger_level)
     secrets = load_secrets("SECRETS")
     openai.api_key = secrets[openai_tag]
+    openai.base_url = secrets[openai_url]
     os.environ["ANTHROPIC_API_KEY"] = secrets[anthropic_tag]
     if organization is not None:
         openai.organization = secrets[organization]

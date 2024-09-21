@@ -176,8 +176,16 @@ class OpenAIModel(ModelAPIProtocol):
 
         # make dummy request to get token and request capacity
         model_metadata = await self._get_dummy_response_header(model_id)
-        token_capacity = int(model_metadata["x-ratelimit-limit-tokens"])
-        request_capacity = int(model_metadata["x-ratelimit-limit-requests"])
+        token_capacity = (
+            int(model_metadata["x-ratelimit-limit-tokens"])
+            if "x-ratelimit-limit-tokens" in model_metadata
+            else 300000
+        )  # default
+        request_capacity = (
+            int(model_metadata["x-ratelimit-limit-requests"])
+            if "x-ratelimit-limit-requests" in model_metadata
+            else 300
+        )  # default
         print(
             f"got capacities for model {model_id}: {token_capacity}, {request_capacity}"
         )
@@ -277,6 +285,7 @@ class OpenAIModel(ModelAPIProtocol):
 
 _GPT_4_MODELS = [
     "gpt-4",
+    "gpt-4o",
     "gpt-4-0314",
     "gpt-4-0613",
     "gpt-4-32k",
@@ -305,7 +314,8 @@ class OpenAIChatModel(OpenAIModel):
 
     @retry(stop=stop_after_attempt(8), wait=wait_fixed(2))
     async def _get_dummy_response_header(self, model_id: str):
-        url = "https://api.openai.com/v1/chat/completions"
+        base_url = openai.base_url if openai.base_url else "https://api.openai.com/v1"
+        url = f"{base_url}/chat/completions"
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {openai.api_key}",
@@ -316,9 +326,14 @@ class OpenAIChatModel(OpenAIModel):
             "messages": [{"role": "user", "content": "Say 1"}],
         }
         response = requests.post(url, headers=headers, json=data)
-        if "x-ratelimit-limit-tokens" not in response.headers:
-            raise RuntimeError("Failed to get dummy response header")
-        return response.headers
+        # print("response:","\n", response)
+        response_headers = {
+            key.lower(): value for key, value in response.headers.items()
+        }
+        print(response_headers)
+        if "x-ratelimit-limit-tokens" not in response_headers:
+            print("Warning: 'x-ratelimit-limit-tokens' header not found in response.")
+        return response_headers
 
     @staticmethod
     def _count_prompt_token_capacity(prompt: OAIChatPrompt, **kwargs) -> int:
@@ -363,6 +378,8 @@ class OpenAIChatModel(OpenAIModel):
         api_start = time.time()
         api_response: OpenAICompletion = await openai.ChatCompletion.acreate(messages=prompt, model=model_id, organization=self.organization, **params)  # type: ignore
         api_duration = time.time() - api_start
+        print("response", "\n", api_response)
+
         duration = time.time() - start_time
         context_token_cost, completion_token_cost = price_per_token(model_id)
         context_cost = api_response.usage.prompt_tokens * context_token_cost
@@ -420,7 +437,9 @@ class OpenAIBaseModel(OpenAIModel):
 
     @retry(stop=stop_after_attempt(8), wait=wait_fixed(2))
     async def _get_dummy_response_header(self, model_id: str):
-        url = "https://api.openai.com/v1/completions"
+        base_url = openai.base_url if openai.base_url else "https://api.openai.com/v1"
+        print("\n\n\n\n\n\n\n {base_url} \n\n\n\n\n\n\n")
+        url = f"{base_url}/chat/completions"
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {openai.api_key}",

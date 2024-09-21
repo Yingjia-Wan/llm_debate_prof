@@ -4,16 +4,16 @@ set -eoux pipefail
 exp_dir=./exp/minimal
 mkdir -p $exp_dir
 
-# using all gpt-4-turbo for this minimal example
-model=gpt-4-1106-preview
-model_judge=gpt-4-1106-preview
+# using all gpt-3.5-turbo for this minimal example
+model=gpt-4o
+model_judge=gpt-4o
 
 # minimal example to reduce compute costs so using BoN=1 and only 10 questions
 # if you want to run the full experiment, use BoN=16, temperature=0.8 and limit=47 (see run_figure1.sh)
 BoN=1
 temperature=0.4
 limit=20
-dataset_args="++max_num_from_same_story=5 ++split=both ++human_experiments=8 ++limit=$limit" # T_h dataset (47 questions)
+dataset_args="++max_num_from_same_story=5 ++split=both ++human_experiments=8 ++limit=$limit" # T_h dataset (20 questions)
 
 # Run all experiments
 debate_args="++correct_debater.language_model.model=$model \
